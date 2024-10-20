@@ -2,14 +2,13 @@
 	heap
 	This question requires you to implement a binary heap function
 */
-// I AM NOT DONE
 
 use std::cmp::Ord;
 use std::default::Default;
 
 pub struct Heap<T>
 where
-    T: Default,
+    T: Default + Ord + Clone,
 {
     count: usize,
     items: Vec<T>,
@@ -18,12 +17,12 @@ where
 
 impl<T> Heap<T>
 where
-    T: Default,
+    T: Default + Ord + Clone,
 {
     pub fn new(comparator: fn(&T, &T) -> bool) -> Self {
         Self {
             count: 0,
-            items: vec![T::default()],
+            items: vec![],
             comparator,
         }
     }
@@ -37,65 +36,103 @@ where
     }
 
     pub fn add(&mut self, value: T) {
-        //TODO
+        self.items.push(value);
+        let idx = self.count;
+        self.count += 1;
+        self.sift_up(idx);
     }
 
     fn parent_idx(&self, idx: usize) -> usize {
-        idx / 2
-    }
-
-    fn children_present(&self, idx: usize) -> bool {
-        self.left_child_idx(idx) <= self.count
+        (idx - 1) / 2
     }
 
     fn left_child_idx(&self, idx: usize) -> usize {
-        idx * 2
+        idx * 2 + 1
     }
 
     fn right_child_idx(&self, idx: usize) -> usize {
-        self.left_child_idx(idx) + 1
+        idx * 2 + 2
     }
 
-    fn smallest_child_idx(&self, idx: usize) -> usize {
-        //TODO
-		0
+    fn smallest_child_idx(&self, idx: usize) -> Option<usize> {
+        let left = self.left_child_idx(idx);
+        let right = self.right_child_idx(idx);
+        
+        if left >= self.count {
+            return None;
+        }
+        
+        if right >= self.count {
+            // If only the left child exists, return left
+            return Some(left);
+        }
+        
+        // Use the comparator to decide between left and right children
+        if (self.comparator)(&self.items[left], &self.items[right]) {
+            Some(left)
+        } else {
+            Some(right)
+        }
     }
-}
+    
 
-impl<T> Heap<T>
-where
-    T: Default + Ord,
-{
-    /// Create a new MinHeap
-    pub fn new_min() -> Self {
-        Self::new(|a, b| a < b)
+    fn sift_up(&mut self, mut idx: usize) {
+        while idx > 0 {
+            let parent_idx = self.parent_idx(idx);
+            if (self.comparator)(&self.items[parent_idx], &self.items[idx]) {
+                break;
+            }
+            self.items.swap(idx, parent_idx);
+            idx = parent_idx;
+        }
     }
 
-    /// Create a new MaxHeap
-    pub fn new_max() -> Self {
-        Self::new(|a, b| a > b)
+    fn sift_down(&mut self, mut idx: usize) {
+        loop {
+            let smallest_child_idx = self.smallest_child_idx(idx);
+            match smallest_child_idx {
+                Some(child_idx) if !(self.comparator)(&self.items[idx], &self.items[child_idx]) => {
+                    self.items.swap(idx, child_idx);
+                    idx = child_idx;
+                }
+                _ => break,
+            }
+        }
     }
+    
 }
 
 impl<T> Iterator for Heap<T>
 where
-    T: Default,
+    T: Default + Ord + Clone,
 {
     type Item = T;
 
-    fn next(&mut self) -> Option<T> {
-        //TODO
-		None
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.is_empty() {
+            None
+        } else {
+            let item = self.items[0].clone();
+            if self.count > 1 {
+                self.items[0] = self.items.remove(self.count - 1);
+                self.count -= 1;
+                self.sift_down(0); // Start sifting from the root
+            } else {
+                self.items.clear();
+                self.count = 0;
+            }
+            Some(item)
+        }
     }
 }
+
 
 pub struct MinHeap;
 
 impl MinHeap {
-    #[allow(clippy::new_ret_no_self)]
     pub fn new<T>() -> Heap<T>
     where
-        T: Default + Ord,
+        T: Default + Ord + Clone,
     {
         Heap::new(|a, b| a < b)
     }
@@ -104,10 +141,9 @@ impl MinHeap {
 pub struct MaxHeap;
 
 impl MaxHeap {
-    #[allow(clippy::new_ret_no_self)]
     pub fn new<T>() -> Heap<T>
     where
-        T: Default + Ord,
+        T: Default + Ord + Clone,
     {
         Heap::new(|a, b| a > b)
     }
